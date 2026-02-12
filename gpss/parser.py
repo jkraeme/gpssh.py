@@ -1,6 +1,8 @@
 from .statement import Statement, StatementType
 from .function import Function
 from ._helpers import debugmsg, parser_error, warn
+# --- NEW IMPORT ---
+from .preprocessor import AmperVariableProcessor 
 
 undefined = object()
 
@@ -36,12 +38,22 @@ class Parser:
 
 		# Open and read GPSS program
 		self.infile = infile
+		raw_lines = []
+		
+		# Read the raw lines (do not splitlines() yet if reading from file)
 		if self.infile is not None:
 			with open(self.infile, "r") as file:
-				self.inputdata = file.read()
-		else:
-			self.inputdata = program
-		self.inputlines = tuple(map(self.remove_comment, self.inputdata.splitlines()))
+				raw_lines = file.readlines()
+		elif program is not None:
+			raw_lines = program.splitlines()
+		
+		# --- GPSS/H PREPROCESSOR INTEGRATION ---
+		# This converts "&VAR" to numbers and handles LET statements
+		preproc = AmperVariableProcessor()
+		processed_lines = preproc.process_lines(raw_lines)
+		
+		# Apply comment removal to the PROCESSED lines
+		self.inputlines = tuple(map(self.remove_comment, processed_lines))
 
 		# Get Statements from program
 		self.linenum = 1
